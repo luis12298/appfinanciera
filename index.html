@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Formulario de Pago</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+
+<body class="container">
+
+    <h5 class="center-align">PRESTAMOS EXPRESS</h5>
+    <p class="center-align">Salida a Masaguara, Comontan <br> Tel: 9369-9763</p>
+    <h6 class="center-align">COMPROBANTE DE PAGO</h6>
+
+    <form id="form-comprobante" class="z-depth-2 card-panel">
+
+        <div class="input-field">
+            <input type="date" id="fecha" name="fecha" required readonly>
+            <label for="fecha">Fecha</label>
+        </div>
+
+        <div class="input-field">
+            <input type="time" id="hora" name="hora" required readonly>
+            <label for="hora">Hora</label>
+        </div>
+
+        <div class="input-field">
+            <input type="text" id="cliente" name="cliente" required>
+            <label for="cliente">Cliente (Nombre y Apellido)</label>
+        </div>
+
+        <div class="input-field">
+            <select id="frecuencia" name="frecuencia">
+                <option value="Semanal" selected>Semanal</option>
+                <option value="Quincenal">Quincenal</option>
+                <option value="Mensual">Mensual</option>
+            </select>
+            <label for="frecuencia">Frecuencia</label>
+        </div>
+
+        <div class="input-field">
+            <input type="number" id="montoTotal" name="montoTotal" step="0.01" required>
+            <label for="montoTotal">Monto Total Prestamo</label>
+        </div>
+
+        <div class="input-field">
+            <input type="number" id="recibido" name="recibido" step="0.01" required>
+            <label for="recibido">MontoRecibido</label>
+        </div>
+
+        <div class="input-field">
+            <input type="text" id="cuota" name="cuota" required>
+            <label for="cuota">#Cuota (Ej: 3 de 20)</label>
+        </div>
+
+        <div class="input-field">
+            <input type="number" id="saldo" name="saldo" step="0.01" required>
+            <label for="saldo">Saldo</label>
+        </div>
+
+        <div class="input-field">
+            <select id="estado" name="estado">
+                <option value="Abonado" selected>Abonado</option>
+                <option value="Completo">Completo</option>
+                <option value="Excedente">Excedente</option>
+            </select>
+            <label for="estado">Estado</label>
+        </div>
+
+        <div class="center-align">
+            <button class="btn waves-effect waves-light" type="submit">
+                Guardar Comprobante
+                <i class="material-icons right">send</i>
+            </button>
+        </div>
+        <hr>
+        <hr>
+        <div id="preview-ticket" style="display:none; margin-top: 20px;">
+            <h6 class="center-align">Vista Previa del Recibo</h6>
+            <div id="ticket"
+                style="width: 57mm; height: 120mm; padding: 5px; border: 1px solid #ccc; font-family: monospace; font-size: 12px; background: white; box-sizing: border-box;">
+                <div style="text-align: center; font-weight: bold;">PRESTAMOS EXPRESS</div>
+                <div style="text-align: center;">Salida a Masaguara, Comontan<br>Tel: 9369-9763</div>
+                <div style="text-align: center; font-weight: bold; margin: 8px 0;">COMPROBANTE DE PAGO</div>
+                <div style="border-top: 1px dashed #000; margin: 8px 0;"></div>
+
+                <div style="margin-top: 10px;"><strong>Fecha:</strong> <span id="r-fecha"></span></div>
+                <div style="margin-top: 10px;"><strong>Hora:</strong> <span id="r-hora"></span></div>
+                <div style="margin-top: 10px;"><strong>Cliente:</strong> <span id="r-cliente"></span></div>
+                <div style="margin-top: 10px;"><strong>Frecuencia:</strong> <span id="r-frecuencia"></span></div>
+                <div style="margin-top: 10px;"><strong>Monto Total:</strong> <span id="r-montoTotal"></span></div>
+                <div style="margin-top: 10px;"><strong>Recibido:</strong> <span id="r-recibido"></span></div>
+                <div style="margin-top: 10px;"><strong>#Cuota:</strong> <span id="r-cuota"></span></div>
+                <div style="margin-top: 10px;"><strong>Saldo:</strong> <span id="r-saldo"></span></div>
+                <div style="margin-top: 6px;"><strong>Estado:</strong> <span id="r-estado"></span></div>
+            </div>
+
+            <div class="center-align" style="margin-top: 10px;">
+                <button class="btn green" onclick="printDiv('ticket')">Imprimir Recibo</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="card-panel" style="margin-top: 20px;">
+        <h6 class="center-align">Histórico de Comprobantes</h6>
+        <div class="input-field">
+            <input type="text" id="buscar-cliente" placeholder="Buscar por nombre de cliente">
+            <label for="buscar-cliente">Buscar</label>
+            <button id="btn-exportar" class="btn waves-effect waves-light">Exportar</button>
+        </div>
+        <table class="striped responsive-table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Cliente</th>
+                    <th>Recibido</th>
+                    <th>Cuota</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-comprobantes">
+                <!-- Los comprobantes se cargarán aquí -->
+            </tbody>
+        </table>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script>
+        // Inicializar la base de datos
+        let db;
+        const dbName = "prestamosExpressDB";
+        const dbVersion = 1;
+        const storeName = "comprobantes";
+
+        // Función para inicializar la base de datos
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(dbName, dbVersion);
+
+                request.onerror = (event) => {
+                    console.error("Error al abrir la base de datos:", event);
+                    reject("Error al abrir la base de datos");
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    console.log("Base de datos abierta correctamente");
+                    resolve(db);
+                };
+
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+
+                    // Crear un almacén de objetos para los comprobantes
+                    if (!db.objectStoreNames.contains(storeName)) {
+                        const objectStore = db.createObjectStore(storeName, { keyPath: "id", autoIncrement: true });
+
+                        // Crear índices para búsquedas rápidas
+                        objectStore.createIndex("cliente", "cliente", { unique: false });
+                        objectStore.createIndex("fecha", "fecha", { unique: false });
+                    }
+                };
+            });
+        }
+
+        // Función para guardar un comprobante en IndexedDB
+        function guardarComprobante(datos) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], "readwrite");
+                const objectStore = transaction.objectStore(storeName);
+
+                // Agregar marca de tiempo
+                datos.timestamp = new Date().getTime();
+
+                const request = objectStore.add(datos);
+
+                request.onsuccess = () => {
+                    resolve({ success: true, message: "Comprobante guardado correctamente", id: request.result });
+                };
+
+                request.onerror = (event) => {
+                    console.error("Error al guardar el comprobante:", event);
+                    reject({ success: false, message: "Error al guardar el comprobante" });
+                };
+            });
+        }
+
+        // Función para cargar todos los comprobantes
+        function cargarComprobantes(filtroCliente = "") {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], "readonly");
+                const objectStore = transaction.objectStore(storeName);
+                const comprobantes = [];
+
+                const request = objectStore.openCursor();
+
+                request.onsuccess = (event) => {
+                    const cursor = event.target.result;
+
+                    if (cursor) {
+                        // Si hay un filtro, aplicarlo
+                        if (!filtroCliente || cursor.value.cliente.toLowerCase().includes(filtroCliente.toLowerCase())) {
+                            comprobantes.push(cursor.value);
+                        }
+                        cursor.continue();
+                    } else {
+                        // Ordenar por fecha y hora (más recientes primero)
+                        comprobantes.sort((a, b) => b.timestamp - a.timestamp);
+                        resolve(comprobantes);
+                    }
+                };
+
+                request.onerror = (event) => {
+                    console.error("Error al cargar comprobantes:", event);
+                    reject("Error al cargar comprobantes");
+                };
+            });
+        }
+
+        // Función para eliminar un comprobante
+        function eliminarComprobante(id) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], "readwrite");
+                const objectStore = transaction.objectStore(storeName);
+
+                const request = objectStore.delete(id);
+
+                request.onsuccess = () => {
+                    resolve({ success: true, message: "Comprobante eliminado correctamente" });
+                };
+
+                request.onerror = (event) => {
+                    console.error("Error al eliminar el comprobante:", event);
+                    reject({ success: false, message: "Error al eliminar el comprobante" });
+                };
+            });
+        }
+
+        // Función para mostrar los comprobantes en la tabla
+        function mostrarComprobantes(comprobantes) {
+            const tabla = document.getElementById("tabla-comprobantes");
+            tabla.innerHTML = "";
+
+            if (comprobantes.length === 0) {
+                const fila = document.createElement("tr");
+                fila.innerHTML = `<td colspan="5" class="center-align">No hay comprobantes guardados</td>`;
+                tabla.appendChild(fila);
+                return;
+            }
+
+            comprobantes.forEach(comprobante => {
+                const fila = document.createElement("tr");
+                fila.innerHTML = `
+                    <td>${comprobante.fecha} ${comprobante.hora}</td>
+                    <td>${comprobante.cliente}</td>
+                    <td>L. ${parseFloat(comprobante.recibido).toFixed(2)}</td>
+                    <td>${comprobante.cuota}</td>
+                    <td>
+                        <button class="btn-small blue view-btn" data-id="${comprobante.id}">
+                            <i class="material-icons">visibility</i>
+                        </button>
+                        <button class="btn-small red delete-btn" data-id="${comprobante.id}">
+                            <i class="material-icons">delete</i>
+                        </button>
+                    </td>
+                `;
+                tabla.appendChild(fila);
+            });
+
+            // Agregar eventos a los botones
+            document.querySelectorAll(".view-btn").forEach(btn => {
+                btn.addEventListener("click", function () {
+                    const id = parseInt(this.getAttribute("data-id"));
+                    verComprobante(id);
+                });
+            });
+
+            document.querySelectorAll(".delete-btn").forEach(btn => {
+                btn.addEventListener("click", function () {
+                    const id = parseInt(this.getAttribute("data-id"));
+                    if (confirm("¿Está seguro de eliminar este comprobante?")) {
+                        eliminarComprobante(id)
+                            .then(result => {
+                                M.toast({ html: result.message, classes: 'green darken-1' });
+                                actualizarTabla();
+                            })
+                            .catch(error => {
+                                M.toast({ html: error.message, classes: 'red darken-1' });
+                            });
+                    }
+                });
+            });
+        }
+
+        // Función para ver un comprobante específico
+        function verComprobante(id) {
+            const transaction = db.transaction([storeName], "readonly");
+            const objectStore = transaction.objectStore(storeName);
+
+            const request = objectStore.get(id);
+
+            request.onsuccess = () => {
+                const comprobante = request.result;
+                if (comprobante) {
+                    // Mostrar datos en el recibo
+                    document.getElementById('r-fecha').innerText = comprobante.fecha;
+                    document.getElementById('r-hora').innerText = comprobante.hora;
+                    document.getElementById('r-cliente').innerText = comprobante.cliente;
+                    document.getElementById('r-frecuencia').innerText = comprobante.frecuencia;
+                    document.getElementById('r-montoTotal').innerText = parseFloat(comprobante.montoTotal).toFixed(2);
+                    document.getElementById('r-recibido').innerText = parseFloat(comprobante.recibido).toFixed(2);
+                    document.getElementById('r-cuota').innerText = comprobante.cuota;
+                    document.getElementById('r-saldo').innerText = parseFloat(comprobante.saldo).toFixed(2);
+                    document.getElementById('r-estado').innerText = comprobante.estado;
+
+                    // Mostrar vista previa
+                    document.getElementById('preview-ticket').style.display = 'block';
+
+                    // Scroll hacia el recibo
+                    document.getElementById('preview-ticket').scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    M.toast({ html: 'Comprobante no encontrado', classes: 'red darken-1' });
+                }
+            };
+
+            request.onerror = (event) => {
+                console.error("Error al obtener el comprobante:", event);
+                M.toast({ html: 'Error al obtener el comprobante', classes: 'red darken-1' });
+            };
+        }
+
+        // Función para actualizar la tabla de comprobantes
+        function actualizarTabla(filtro = "") {
+            cargarComprobantes(filtro)
+                .then(comprobantes => {
+                    mostrarComprobantes(comprobantes);
+                })
+                .catch(error => {
+                    console.error("Error al actualizar la tabla:", error);
+                    M.toast({ html: 'Error al cargar comprobantes', classes: 'red darken-1' });
+                });
+        }
+
+        // Inicializar todo cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', function () {
+            // Inicializar componentes de Materialize
+            var elems = document.querySelectorAll('select');
+            M.FormSelect.init(elems);
+
+            // Establecer fecha y hora actual
+            const getdateActual = new Date();
+            document.getElementById('fecha').value = getdateActual.toISOString().split('T')[0];
+            const gettimeActual = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('hora').value = gettimeActual;
+
+            // Inicializar la base de datos
+            initDB()
+                .then(() => {
+                    // Cargar los comprobantes
+                    actualizarTabla();
+                })
+                .catch(error => {
+                    console.error("Error al inicializar la base de datos:", error);
+                    M.toast({ html: 'Error al inicializar la base de datos', classes: 'red darken-1' });
+                });
+
+            // Manejar el envío del formulario
+            document.getElementById('form-comprobante').addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                // Obtener valores
+                const datos = {
+                    fecha: document.getElementById('fecha').value,
+                    hora: document.getElementById('hora').value,
+                    cliente: document.getElementById('cliente').value,
+                    frecuencia: document.getElementById('frecuencia').value,
+                    montoTotal: document.getElementById('montoTotal').value,
+                    recibido: document.getElementById('recibido').value,
+                    cuota: document.getElementById('cuota').value,
+                    saldo: document.getElementById('saldo').value,
+                    estado: document.getElementById('estado').value
+                };
+
+                // Guardar en IndexedDB
+                guardarComprobante(datos)
+                    .then(result => {
+                        M.toast({ html: result.message, classes: 'green darken-1' });
+
+                        // Mostrar datos en el recibo
+                        document.getElementById('r-fecha').innerText = datos.fecha;
+                        document.getElementById('r-hora').innerText = datos.hora;
+                        document.getElementById('r-cliente').innerText = datos.cliente;
+                        document.getElementById('r-frecuencia').innerText = datos.frecuencia;
+                        document.getElementById('r-montoTotal').innerText = parseFloat(datos.montoTotal).toFixed(2);
+                        document.getElementById('r-recibido').innerText = parseFloat(datos.recibido).toFixed(2);
+                        document.getElementById('r-cuota').innerText = datos.cuota;
+                        document.getElementById('r-saldo').innerText = parseFloat(datos.saldo).toFixed(2);
+                        document.getElementById('r-estado').innerText = datos.estado;
+
+                        // Mostrar vista previa
+                        document.getElementById('preview-ticket').style.display = 'block';
+
+                        // Actualizar la tabla
+                        actualizarTabla();
+
+                        // Limpiar formulario excepto fecha y hora
+                        document.getElementById('cliente').value = '';
+                        document.getElementById('montoTotal').value = '';
+                        document.getElementById('recibido').value = '';
+                        document.getElementById('cuota').value = '';
+                        document.getElementById('saldo').value = '';
+
+                        // Reiniciar los labels (para Materialize)
+                        M.updateTextFields();
+                    })
+                    .catch(error => {
+                        console.error('Error al guardar:', error);
+                        M.toast({ html: error.message, classes: 'red darken-1' });
+                    });
+
+                // Scroll hacia el recibo
+                document.getElementById('preview-ticket').scrollIntoView({ behavior: 'smooth' });
+            });
+
+            // Buscar por cliente
+            document.getElementById('buscar-cliente').addEventListener('input', function () {
+                actualizarTabla(this.value);
+            });
+            function exportarExcel() {
+                // Cargar todos los comprobantes de la base de datos
+                cargarComprobantes()
+                    .then(comprobantes => {
+                        // Formatear los datos para Excel
+                        const datos = comprobantes.map(item => ({
+                            Fecha: item.fecha,
+                            Hora: item.hora,
+                            Cliente: item.cliente,
+                            Frecuencia: item.frecuencia,
+                            "Monto Total": parseFloat(item.montoTotal).toFixed(2),
+                            Recibido: parseFloat(item.recibido).toFixed(2),
+                            Cuota: item.cuota,
+                            Saldo: parseFloat(item.saldo).toFixed(2),
+                            Estado: item.estado
+                        }));
+
+                        // Crear un libro de trabajo
+                        const libro = XLSX.utils.book_new();
+                        // Crear una hoja de trabajo con los datos
+                        const hoja = XLSX.utils.json_to_sheet(datos);
+                        // Añadir la hoja al libro
+                        XLSX.utils.book_append_sheet(libro, hoja, "Comprobantes");
+
+                        // Generar el archivo y descargarlo
+                        XLSX.writeFile(libro, `Comprobantes_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+                        M.toast({ html: 'Datos exportados correctamente', classes: 'green darken-1' });
+                    })
+                    .catch(error => {
+                        console.error("Error al exportar datos:", error);
+                        M.toast({ html: 'Error al exportar datos', classes: 'red darken-1' });
+                    });
+            }
+            document.getElementById('btn-exportar').addEventListener('click', exportarExcel);
+
+        });
+
+        // Función para imprimir
+        function printDiv(divName) {
+            var printContents = document.getElementById(divName).innerHTML;
+            var originalContents = document.body.innerHTML;
+
+            // Agregar estilos para impresión vertical y sin márgenes
+            var styleToAdd = '<style>@page { size: 5.7cm 12cm; margin: 0; }</style>';
+
+            // Combinar los estilos con el contenido a imprimir
+            document.body.innerHTML = styleToAdd + printContents;
+
+            window.print();
+
+            // Restaurar el contenido original
+            document.body.innerHTML = originalContents;
+
+            // Reinicializar componentes de Materialize después de restaurar
+            var elems = document.querySelectorAll('select');
+            M.FormSelect.init(elems);
+
+            // Vincular eventos nuevamente
+            document.addEventListener('DOMContentLoaded', function () {
+                // Los eventos se vincularán automáticamente
+            });
+        }
+    </script>
+</body>
+
+</html>
