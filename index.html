@@ -194,7 +194,7 @@
             gisLoaded();
 
             // Manejar el envío del formulario
-            document.getElementById('btnGuardar').addEventListener('click', function (e) {
+            document.getElementById('btnGuardar').addEventListener('click', function () {
 
                 if (!isAuthenticated) {
                     M.toast({ html: 'Debe iniciar sesión con Google primero', classes: 'red darken-1' });
