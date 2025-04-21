@@ -21,17 +21,6 @@
     <p class="center-align">Salida a Masaguara, Comontan <br> Tel: 9369-9763</p>
     <h6 class="center-align">COMPROBANTE DE PAGO</h6>
 
-    <div class="card-panel">
-        <div id="user" class="mb-3"></div>
-        <div class="center-align">
-            <button class="btn waves-effect waves-light blue darken-1" onclick="handleAuthClick()">
-                <i class="material-icons left">login</i>Iniciar sesión con Google
-            </button>
-            <button class="btn waves-effect waves-light red darken-1" onclick="signOut()">
-                <i class="material-icons left">logout</i>Cerrar sesión
-            </button>
-        </div>
-    </div>
 
     <form id="form-comprobante" style="display: none;" class="z-depth-2 card-panel">
 
@@ -159,20 +148,18 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-    <script>
-        // Configuración de Google API
-        const CLIENT_ID = "144004458730-lnndl3vput71b0tcoplvpe3biojio5o1.apps.googleusercontent.com";
-        const API_KEY = "AIzaSyB0QrYgiwOajlr7e0erLfGcCrsFC6hHTlQ";
-        const SPREADSHEET_ID = "1GVR2JXb2wiAmnTa7TEwbQEv8ongFNF_eONDZ8oAc_BM";
-        const SHEET_NAME = "Hoja1";
-        const SCOPES = "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email";
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-        let tokenClient;
-        let gapiInited = false;
-        let gisInited = false;
+        // Configuración de Supabase
+        const SUPABASE_URL = 'https://rrezyyuigspesnjfhypa.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyZXp5eXVpZ3NwZXNuamZoeXBhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ2MzYzMTYsImV4cCI6MjA2MDIxMjMxNn0.wH-7PB5FotbPJTAL-1hOsUE8_SeZBYJwqJrAkHXuj2Q';
+
+        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY); // Aquí ya no hay conflicto
+
+
         let selectedId = null;
         let deleteModal;
-        let isAuthenticated = false;
 
         // Inicializar la aplicación
         document.addEventListener('DOMContentLoaded', function () {
@@ -180,7 +167,7 @@
             var elems = document.querySelectorAll('select');
             M.FormSelect.init(elems);
 
-            // Inicializar modal
+            // Inicializar modales
             var modalElems = document.querySelectorAll('.modal');
             deleteModal = M.Modal.init(modalElems[0]);
 
@@ -190,18 +177,15 @@
             const gettimeActual = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
             document.getElementById('hora').value = gettimeActual;
 
-            // Inicializar Google API
-            gapi.load("client:auth2", gapiLoaded);
-            gisLoaded();
+            // Mostrar el formulario y el historial directamente
+            document.getElementById("form-comprobante").style.display = "block";
+            document.getElementById('historial').style.display = "block";
 
-            // Manejar el envío del formulario
+            // Cargar comprobantes al inicio
+            cargarComprobantes();
+
+            // Manejar el envío del formulario de comprobante
             document.getElementById('btnGuardar').addEventListener('click', function () {
-
-                if (!isAuthenticated) {
-                    M.toast({ html: 'Debe iniciar sesión con Google primero', classes: 'red darken-1' });
-                    return;
-                }
-
                 // Obtener valores
                 const datos = {
                     id: Date.now().toString(),
@@ -216,19 +200,14 @@
                     estado: document.getElementById('estado').value
                 };
 
-                // Guardar en Google Sheets
-                appendRow([
-                    datos.id,
-                    datos.fecha,
-                    datos.hora,
-                    datos.cliente,
-                    datos.frecuencia,
-                    datos.montoTotal,
-                    datos.recibido,
-                    datos.cuota,
-                    datos.saldo,
-                    datos.estado
-                ])
+                // Validar campos obligatorios
+                if (!datos.cliente || !datos.montoTotal || !datos.recibido || !datos.cuota || !datos.saldo) {
+                    M.toast({ html: 'Todos los campos son obligatorios', classes: 'red darken-1' });
+                    return;
+                }
+
+                // Guardar en Supabase
+                guardarComprobante(datos)
                     .then(() => {
                         M.toast({ html: 'Comprobante guardado correctamente', classes: 'green darken-1' });
 
@@ -247,7 +226,7 @@
                         document.getElementById('preview-ticket').style.display = 'block';
 
                         // Actualizar la tabla
-                        listRows();
+                        cargarComprobantes();
 
                         // Limpiar formulario excepto fecha y hora
                         document.getElementById('cliente').value = '';
@@ -270,169 +249,99 @@
 
             // Buscar por cliente
             document.getElementById('buscar-cliente').addEventListener('input', function () {
-                listRows(this.value);
+                cargarComprobantes(this.value);
             });
 
-
-
-        });
-
-        // Confirmar eliminación
-        document.getElementById('confirm-delete').addEventListener('click', function () {
-            if (selectedId) {
-                deleteRow(selectedId)
-                    .then(() => {
-                        deleteModal.close();
-                        listRows();
-                        M.toast({ html: 'Comprobante eliminado correctamente', classes: 'green darken-1' });
-                    })
-                    .catch(error => {
-                        console.error("Error al eliminar:", error);
-                        M.toast({ html: 'Error al eliminar el comprobante', classes: 'red darken-1' });
-                    });
-            }
-        });
-
-        // Google API Functions
-        function gapiLoaded() {
-            gapi.load("client", initializeGapiClient);
-        }
-
-        async function initializeGapiClient() {
-            await gapi.client.init({
-                apiKey: API_KEY,
-                discoveryDocs: ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
-            });
-            gapiInited = true;
-            checkAuth();
-        }
-
-        function gisLoaded() {
-            tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: CLIENT_ID,
-                scope: SCOPES,
-                callback: async (response) => {
-                    if (response.error) return;
-                    localStorage.setItem('google_access_token', response.access_token);
-                    gapi.client.setToken(response);
-                    isAuthenticated = true;
-                    await getUserInfo();
-                    listRows();
+            // Confirmar eliminación
+            document.getElementById('confirm-delete').addEventListener('click', function () {
+                if (selectedId) {
+                    eliminarComprobante(selectedId)
+                        .then(() => {
+                            deleteModal.close();
+                            cargarComprobantes();
+                            M.toast({ html: 'Comprobante eliminado correctamente', classes: 'green darken-1' });
+                        })
+                        .catch(error => {
+                            console.error("Error al eliminar:", error);
+                            M.toast({ html: 'Error al eliminar el comprobante', classes: 'red darken-1' });
+                        });
                 }
             });
-            gisInited = true;
-        }
 
-        async function checkAuth() {
-            const token = localStorage.getItem('google_access_token');
-            if (token && gapiInited) {
-                gapi.client.setToken({ access_token: token });
-                isAuthenticated = true;
-                await getUserInfo();
-                listRows();
-            }
-        }
+            // Configurar el botón de captura
+            document.getElementById("btn-imprimir").addEventListener("click", function (e) {
+                e.preventDefault();
+                imprimirRecibo();
+            });
+        });
 
-        async function getUserInfo() {
+        // Función para guardar un comprobante en Supabase
+        async function guardarComprobante(datos) {
             try {
-                const response = await gapi.client.request({ path: "https://www.googleapis.com/oauth2/v2/userinfo" });
-                document.getElementById("user").innerHTML = `
-            <div class="card-content">
-                <span class="card-title"><i class="material-icons left">account_circle</i>Usuario conectado</span>
-                <p>${response.result.email}</p>
-            </div>`;
-                document.getElementById("form-comprobante").style.display = "block";
-                document.getElementById('historial').style.display = "block";
-            } catch (error) {
-                console.error("Error al obtener usuario:", error);
-            }
-        }
+                const { data, error } = await supabase
+                    .from('comprobantes')
+                    .insert([{
+                        fecha: datos.fecha,
+                        hora: datos.hora,
+                        cliente: datos.cliente,
+                        frecuencia: datos.frecuencia,
+                        monto_total: datos.montoTotal,
+                        recibido: datos.recibido,
+                        cuota: datos.cuota,
+                        saldo: datos.saldo,
+                        estado: datos.estado
+                    }]);
 
-        function handleAuthClick() {
-            if (!gapiInited || !gisInited) {
-                M.toast({ html: 'Error al inicializar Google API', classes: 'red darken-1' });
-                return;
-            }
-            tokenClient.requestAccessToken();
-        }
-
-        function signOut() {
-            localStorage.removeItem('google_access_token');
-            gapi.client.setToken(null);
-            isAuthenticated = false;
-            document.getElementById("user").innerHTML = "";
-            M.toast({ html: 'Sesión cerrada correctamente', classes: 'green darken-1' });
-            window.location.reload();
-            document.getElementById("form-comprobante").style.display = "none";
-            document.getElementById('historial').style.display = "none";
-        }
-
-        // Función para guardar un comprobante en Google Sheets
-        async function appendRow(values) {
-            try {
-                await gapi.client.sheets.spreadsheets.values.append({
-                    spreadsheetId: SPREADSHEET_ID,
-                    range: `${SHEET_NAME}!A:J`,
-                    valueInputOption: "RAW",
-                    insertDataOption: "INSERT_ROWS",
-                    resource: { values: [values] }
-                });
+                if (error) throw error;
                 return { success: true };
             } catch (error) {
-                console.error("Error al insertar fila:", error);
+                console.error("Error al insertar comprobante:", error);
                 throw error;
             }
         }
 
         // Función para cargar todos los comprobantes
-        async function listRows(filtroCliente = "") {
+        async function cargarComprobantes(filtroCliente = "") {
             try {
-                const response = await gapi.client.sheets.spreadsheets.values.get({
-                    spreadsheetId: SPREADSHEET_ID,
-                    range: `${SHEET_NAME}!A:J`,
-                });
+                let query = supabase
+                    .from('comprobantes')
+                    .select('*');
 
-                const rows = response.result.values;
+                if (filtroCliente) {
+                    query = query.ilike('cliente', `%${filtroCliente}%`);
+                }
+
+                const { data, error } = await query;
+
+                if (error) throw error;
+
                 const tableBody = document.querySelector("#tabla-comprobantes");
                 tableBody.innerHTML = "";
 
-                if (!rows || rows.length <= 1) {
+                if (!data || data.length === 0) {
                     tableBody.innerHTML = `<tr><td colspan="5" class="center-align">No hay comprobantes guardados</td></tr>`;
                     return;
                 }
 
-                // Filtrar filas si hay un filtro
-                let filteredRows = rows.slice(1);
-                if (filtroCliente) {
-                    filteredRows = filteredRows.filter(row =>
-                        row[3] && row[3].toLowerCase().includes(filtroCliente.toLowerCase())
-                    );
-                }
-
                 // Ordenar por fecha y hora (más recientes primero)
-                filteredRows.sort((a, b) => {
-                    const dateA = new Date(`${a[1]}T${a[2]}`);
-                    const dateB = new Date(`${b[1]}T${b[2]}`);
+                data.sort((a, b) => {
+                    const dateA = new Date(`${a.fecha}T${a.hora}`);
+                    const dateB = new Date(`${b.fecha}T${b.hora}`);
                     return dateB - dateA;
                 });
 
-                if (filteredRows.length === 0) {
-                    tableBody.innerHTML = `<tr><td colspan="5" class="center-align">No se encontraron resultados</td></tr>`;
-                    return;
-                }
-
-                filteredRows.forEach((row) => {
+                data.forEach((comprobante) => {
                     const tr = document.createElement("tr");
                     tr.innerHTML = `
-                <td>${row[1]} ${row[2]}</td>
-                <td>${row[3]}</td>
-                <td>L. ${parseFloat(row[6]).toFixed(2)}</td>
-                <td>${row[7]}</td>
+                <td>${comprobante.fecha} ${comprobante.hora}</td>
+                <td>${comprobante.cliente}</td>
+                <td>L. ${parseFloat(comprobante.recibido).toFixed(2)}</td>
+                <td>${comprobante.cuota}</td>
                 <td>
-                    <button class="btn-small blue view-btn" data-id="${row[0]}">
+                    <button class="btn-small blue view-btn" data-id="${comprobante.id}">
                         <i class="material-icons">visibility</i>
                     </button>
-                    <button class="btn-small red delete-btn" data-id="${row[0]}">
+                    <button class="btn-small red delete-btn" data-id="${comprobante.id}">
                         <i class="material-icons">delete</i>
                     </button>
                 </td>
@@ -464,27 +373,25 @@
         // Función para ver un comprobante específico
         async function verComprobante(id) {
             try {
-                const response = await gapi.client.sheets.spreadsheets.values.get({
-                    spreadsheetId: SPREADSHEET_ID,
-                    range: `${SHEET_NAME}!A:J`,
-                });
+                const { data, error } = await supabase
+                    .from('comprobantes')
+                    .select('*')
+                    .eq('id', id)
+                    .single();
 
-                const rows = response.result.values;
-                if (!rows) return;
+                if (error) throw error;
 
-                const row = rows.find(r => r[0] === id);
-
-                if (row) {
+                if (data) {
                     // Mostrar datos en el recibo
-                    document.getElementById('r-fecha').innerText = row[1];
-                    document.getElementById('r-hora').innerText = row[2];
-                    document.getElementById('r-cliente').innerText = row[3];
-                    document.getElementById('r-frecuencia').innerText = row[4];
-                    document.getElementById('r-montoTotal').innerText = parseFloat(row[5]).toFixed(2);
-                    document.getElementById('r-recibido').innerText = parseFloat(row[6]).toFixed(2);
-                    document.getElementById('r-cuota').innerText = row[7];
-                    document.getElementById('r-saldo').innerText = parseFloat(row[8]).toFixed(2);
-                    document.getElementById('r-estado').innerText = row[9];
+                    document.getElementById('r-fecha').innerText = data.fecha;
+                    document.getElementById('r-hora').innerText = data.hora;
+                    document.getElementById('r-cliente').innerText = data.cliente;
+                    document.getElementById('r-frecuencia').innerText = data.frecuencia;
+                    document.getElementById('r-montoTotal').innerText = parseFloat(data.monto_total).toFixed(2);
+                    document.getElementById('r-recibido').innerText = parseFloat(data.recibido).toFixed(2);
+                    document.getElementById('r-cuota').innerText = data.cuota;
+                    document.getElementById('r-saldo').innerText = parseFloat(data.saldo).toFixed(2);
+                    document.getElementById('r-estado').innerText = data.estado;
 
                     // Mostrar vista previa
                     document.getElementById('preview-ticket').style.display = 'block';
@@ -501,30 +408,14 @@
         }
 
         // Función para eliminar un comprobante
-        async function deleteRow(id) {
+        async function eliminarComprobante(id) {
             try {
-                // Obtener todos los datos
-                const response = await gapi.client.sheets.spreadsheets.values.get({
-                    spreadsheetId: SPREADSHEET_ID,
-                    range: `${SHEET_NAME}!A:J`,
-                });
+                const { error } = await supabase
+                    .from('comprobantes')
+                    .delete()
+                    .eq('id', id);
 
-                const rows = response.result.values;
-                if (!rows) return;
-
-                // Encontrar el índice de la fila con el ID
-                const rowIndex = rows.findIndex(r => r[0] === id);
-
-                if (rowIndex === -1) {
-                    throw new Error("Comprobante no encontrado");
-                }
-
-                // Eliminar la fila (limpiando sus valores)
-                await gapi.client.sheets.spreadsheets.values.clear({
-                    spreadsheetId: SPREADSHEET_ID,
-                    range: `${SHEET_NAME}!A${rowIndex + 1}:J${rowIndex + 1}`
-                });
-
+                if (error) throw error;
                 return { success: true };
             } catch (error) {
                 console.error("Error al eliminar:", error);
@@ -532,11 +423,7 @@
             }
         }
 
-        // Función para exportar a Excel
-
-
-        // Función para enviar email
-
+        // Función para imprimir el recibo
         function printDiv(divName) {
             var printContents = document.getElementById(divName).innerHTML;
             var originalContents = document.body.innerHTML;
@@ -556,12 +443,12 @@
             var elems = document.querySelectorAll('select');
             M.FormSelect.init(elems);
 
-
+            // Reinicializar modales
+            var modalElems = document.querySelectorAll('.modal');
+            deleteModal = M.Modal.init(modalElems[0]);
         }
-        document.getElementById("btn-imprimir").addEventListener("click", function (e) {
-            e.preventDefault();
-            imprimirRecibo();
-        });
+
+        // Función para capturar el recibo
         function imprimirRecibo() {
             html2canvas(document.getElementById('ticket'), {
                 scale: 2, // Mejor calidad
