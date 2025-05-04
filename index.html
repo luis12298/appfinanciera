@@ -12,7 +12,28 @@
     <script src="https://apis.google.com/js/api.js"></script>
     <script async defer src="https://accounts.google.com/gsi/client"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        table {
+            border: 1px solid #ccc;
+            border-collapse: collapse;
+            margin: 0;
+            padding: 0;
+            table-layout: fixed;
+            width: 100%;
+        }
 
+        table tr {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            padding: .35em;
+        }
+
+        table th,
+        table td {
+            padding: .625em;
+            text-align: center;
+        }
+    </style>
 </head>
 
 <body class="container">
@@ -119,7 +140,7 @@
             <label for="buscar-cliente">Buscar</label>
 
         </div>
-        <table class="striped responsive-table">
+        <table class="striped tabled">
             <thead>
                 <tr>
                     <th>Fecha</th>
